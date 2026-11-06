@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Handwritten Signature Transparentizer &amp; Ink Enhancer — 100% Client-Side</title>
+    <meta
+      name="description"
+      content="Convert paper pen signatures to clean transparent PNGs. Erase paper background, enhance ink darkness, and auto-crop 100% locally in your browser. Zero cloud uploads."
+    />
+    <meta name="keywords" content="signature transparentizer, make signature transparent online, transparent signature png, remove paper background signature, enhance signature ink, private signature tool" />
+    <meta name="author" content="GreenTools" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#ffffff" />
+
+    <!-- OpenGraph Meta Tags -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Handwritten Signature Transparentizer — 100% Client-Side" />
+    <meta
+      property="og:description"
+      content="Erase paper backgrounds from pen signatures and export crisp transparent PNGs directly in your browser."
+    />
+    <meta property="og:site_name" content="GreenTools" />
+
+    <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Tailwind CSS CDN & Lucide Icons CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'monospace'],
+            },
+          },
+        },
+      };
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Structured JSON-LD Schema: WebApplication & FAQPage -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebApplication",
+            "name": "Handwritten Signature Transparentizer & Ink Enhancer",
+            "operatingSystem": "All",
+            "applicationCategory": "DesignApplication",
+            "browserRequirements": "Requires JavaScript and HTML5 Canvas API support.",
+            "description": "Extract pen strokes from paper photos, erase shadows and background paper, and export transparent signature PNGs locally.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "featureList": [
+              "Canvas 2D luminance and alpha-thresholding engine",
+              "Eliminates paper texture, shadows, and off-white paper color",
+              "Ink darkness and contrast boost for faint ballpoint pens",
+              "Color tint modes: Original ink, Deep Black, and Executive Navy",
+              "Automatic tight whitespace bounding-box crop",
+              "One-click Download Transparent PNG & Copy Image to Clipboard",
+              "100% Client-side privacy guarantee for legal signatures"
+            ]
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Why should I not use AI tools or cloud converters for my signature?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "AI diffusion models alter subtle cursive pen strokes and loops, which can invalidate legal contracts and official documents. Furthermore, uploading your handwritten legal signature to unknown third-party cloud servers presents severe identity theft and forgery risks."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How does this tool make paper backgrounds transparent?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The tool inspects each pixel's luminance and color saturation directly in your browser's Canvas memory. Pixels matching paper tones are mapped to alpha zero (pure transparency) with smooth antialiased edge transitions."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does this work with blue ink or pencil signatures?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. You can preserve the original blue ink color, enhance its contrast, or convert it to crisp high-contrast black or executive navy with a single click."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does this tool work offline?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. All processing executes 100% on your device. You can disconnect your internet and continue transparentizing signatures without restriction."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+
+    <style>
+      :root {
+        --grid-line: rgba(15, 23, 42, 0.04);
+      }
+      .bg-subtle-grid {
+        background-size: 24px 24px;
+        background-image:
+          linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+          linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+      }
+      .checker-bg {
+        background-color: #ffffff;
+        background-image: 
+          linear-gradient(45deg, #e2e8f0 25%, transparent 25%), 
+          linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), 
+          linear-gradient(45deg, transparent 75%, #e2e8f0 75%), 
+          linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+        background-size: 16px 16px;
+        background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased selection:bg-indigo-500 selection:text-white bg-subtle-grid flex flex-col justify-between">
+    <!-- Header -->
+    <header class="border-b border-slate-200/80 bg-white/90 backdrop-blur-md sticky top-0 z-30">
+      <div class="max-w-[1280px] mx-auto flex items-center justify-between gap-6 px-4 sm:px-6 py-3.5">
+        <a href="#app" class="flex items-center gap-2.5 text-base font-bold tracking-tight text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded">
+          <div class="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-xs">
+            <i data-lucide="pen-tool" class="w-4 h-4"></i>
+          </div>
+          <span>GreenTools <span class="text-xs font-normal text-slate-400">/ Signature Transparentizer</span></span>
+        </a>
+
+        <nav aria-label="Quick links" class="hidden sm:flex items-center gap-6 text-xs sm:text-sm font-medium text-slate-600">
+          <a href="#how-to-use" class="hover:text-slate-900 transition-colors">How It Works</a>
+          <a href="#privacy" class="hover:text-slate-900 transition-colors">Privacy</a>
+          <a href="#faq" class="hover:text-slate-900 transition-colors">FAQ</a>
+        </nav>
+
+        <div class="flex items-center gap-2">
+          <button
+            id="btn-sample-top"
+            type="button"
+            class="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap"
+          >
+            Try Sample Signature
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main id="app" class="max-w-[1280px] mx-auto w-full px-4 sm:px-6 py-8 sm:py-12 flex-1">
+      
+      <!-- Initial Drop Zone & Hero -->
+      <section id="drop-view" class="max-w-2xl mx-auto text-center pt-2 sm:pt-6 pb-6">
+        <div class="inline-flex items-center gap-2 px-3 py-1 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/80 rounded-full mb-4">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 shrink-0"></i>
+          <span>100% Private · Legal signatures never leave your device</span>
+        </div>
+
+        <h1 class="text-3xl sm:text-5xl font-bold tracking-tight text-slate-900">
+          Handwritten Signature Transparentizer
+        </h1>
+
+        <p class="mt-3 text-base sm:text-lg text-slate-600 max-w-xl mx-auto leading-relaxed">
+          Take a photo of your pen signature on paper. Erase shadows and paper texture to pure transparency, boost ink darkness, and export a clean PNG.
+        </p>
+
+        <!-- Drop Box -->
+        <div
+          id="dropzone"
+          class="mt-8 border-2 border-dashed border-slate-300 hover:border-indigo-600 bg-white rounded-2xl p-8 sm:p-12 shadow-xs transition-all duration-150 cursor-pointer group"
+        >
+          <div class="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition-transform duration-150">
+            <i data-lucide="file-signature" class="w-7 h-7"></i>
+          </div>
+
+          <p class="text-lg font-semibold text-slate-900">
+            Drag and drop photo of your signature
+          </p>
+          <p class="mt-1 text-xs sm:text-sm text-slate-500">
+            Supports JPG, PNG, WEBP, or phone camera snapshots
+          </p>
+
+          <div class="mt-6">
+            <label
+              for="file-input"
+              class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              <i data-lucide="folder-open" class="w-4 h-4"></i>
+              <span>Browse signature photo</span>
+              <input
+                id="file-input"
+                type="file"
+                accept="image/*"
+                class="sr-only"
+              />
+            </label>
+          </div>
+
+          <div class="mt-6 pt-5 border-t border-slate-100 flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500">
+            <span>Or press <kbd class="px-1.5 py-0.5 font-mono text-[11px] bg-slate-100 rounded border border-slate-200">Ctrl+V</kbd> to paste</span>
+            <span>·</span>
+            <button
+              id="btn-sample-drop"
+              type="button"
+              class="text-indigo-600 font-medium hover:underline"
+            >
+              Load sample pen signature
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Workspace & Live Canvas Preview (Progressive Disclosure) -->
+      <section id="workspace-view" class="hidden transition-all duration-300 max-w-4xl mx-auto">
+        <!-- Controls Toolbar Card -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-xs mb-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+            <div>
+              <div class="flex items-center gap-2">
+                <span id="label-filename" class="font-bold text-sm text-slate-900 truncate max-w-xs">signature.png</span>
+                <span id="label-dimensions" class="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md font-mono">800 x 400 px</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-1">
+                Paper texture removed · Transparent background ready for PDF &amp; Google Docs
+              </p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                id="btn-copy-png"
+                type="button"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                <span id="copy-btn-text">Copy Image</span>
+              </button>
+              <button
+                id="btn-download-png"
+                type="button"
+                class="inline-flex items-center gap-2 px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg shadow-xs transition-colors"
+              >
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Download Transparent PNG</span>
+              </button>
+              <button
+                id="btn-open-another"
+                type="button"
+                class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
+                title="Open another image"
+              >
+                <i data-lucide="x" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Tuning Sliders & Options Grid -->
+          <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-xs">
+            <!-- Paper Removal Threshold Slider -->
+            <div>
+              <div class="flex items-center justify-between font-semibold text-slate-700 mb-1.5">
+                <span>Paper Erase Threshold</span>
+                <span id="label-threshold" class="font-mono text-indigo-600 font-bold">195</span>
+              </div>
+              <input
+                id="slider-threshold"
+                type="range"
+                min="100"
+                max="250"
+                value="195"
+                class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              />
+              <span class="text-[11px] text-slate-400 mt-1 block">Increase to remove paper shadows</span>
+            </div>
+
+            <!-- Ink Darkness / Contrast Slider -->
+            <div>
+              <div class="flex items-center justify-between font-semibold text-slate-700 mb-1.5">
+                <span>Ink Darkness &amp; Boldness</span>
+                <span id="label-darkness" class="font-mono text-indigo-600 font-bold">1.5x</span>
+              </div>
+              <input
+                id="slider-darkness"
+                type="range"
+                min="1.0"
+                max="3.0"
+                step="0.1"
+                value="1.5"
+                class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              />
+              <span class="text-[11px] text-slate-400 mt-1 block">Boost faint pen strokes</span>
+            </div>
+
+            <!-- Ink Color Preset Selection -->
+            <div>
+              <span class="block font-semibold text-slate-700 mb-1.5">Ink Color Tint</span>
+              <div class="flex flex-wrap gap-1.5">
+                <button type="button" class="color-btn px-2.5 py-1.5 rounded-lg border font-medium transition-colors bg-slate-900 text-white border-slate-900" data-color="natural">
+                  Natural Ink
+                </button>
+                <button type="button" class="color-btn px-2.5 py-1.5 rounded-lg border font-medium transition-colors bg-slate-100 text-slate-700 border-slate-200" data-color="black">
+                  Deep Black
+                </button>
+                <button type="button" class="color-btn px-2.5 py-1.5 rounded-lg border font-medium transition-colors bg-slate-100 text-slate-700 border-slate-200" data-color="navy">
+                  Executive Navy
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Auto Crop Checkbox -->
+          <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+            <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+              <input id="toggle-autocrop" type="checkbox" checked class="rounded text-indigo-600 focus:ring-indigo-500" />
+              <span>Auto-crop empty borders &amp; whitespace</span>
+            </label>
+            <span class="text-[11px] text-slate-400">Leaves a clean 20px margin around your signature</span>
+          </div>
+        </div>
+
+        <!-- Checkerboard Live Preview Container -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 shadow-xs flex flex-col items-center justify-center min-h-[300px]">
+          <div class="w-full max-w-2xl checker-bg rounded-xl p-6 border border-slate-200 shadow-2xs flex items-center justify-center overflow-auto">
+            <canvas id="signature-canvas" class="max-w-full max-h-[320px] object-contain transition-all"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Sponsor Slot Container -->
+      <aside
+        id="sponsor-slot"
+        aria-label="Product Recommendation"
+        class="mt-12 max-w-3xl mx-auto bg-white border border-slate-200 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs"
+      >
+        <div class="flex items-center gap-3.5">
+          <div class="w-9 h-9 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <i data-lucide="file-check" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <div class="text-[11px] font-semibold text-indigo-600 uppercase tracking-wider">
+              Document Workflow
+            </div>
+            <p class="text-xs sm:text-sm font-medium text-slate-800 mt-0.5">
+              Signing contracts, NDAs, and PDF invoices on a weekly basis?
+            </p>
+            <p class="text-xs text-slate-500">
+              Keep your transparent signature PNG saved locally for instant drag-and-drop signing.
+            </p>
+          </div>
+        </div>
+        <a
+          href="#how-to-use"
+          class="px-3.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors whitespace-nowrap shrink-0 self-end sm:self-center"
+        >
+          Learn more
+        </a>
+      </aside>
+
+      <!-- How to Use Documentation -->
+      <article id="how-to-use" class="mt-16 pt-10 border-t border-slate-200 max-w-3xl mx-auto">
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+          How to Make a Handwritten Signature Transparent
+        </h2>
+        <p class="mt-2 text-sm text-slate-600 leading-relaxed">
+          Create an authentic, high-resolution digital signature from a real pen on paper:
+        </p>
+
+        <div class="mt-6 space-y-4">
+          <div class="flex items-start gap-3">
+            <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">1</div>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900">Sign White Paper &amp; Snap a Photo</h3>
+              <p class="text-xs text-slate-600 mt-0.5">
+                Sign a plain white sheet of paper using a dark blue or black pen. Take a clear photo with your phone or scan it, then drag the image file into the drop box.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">2</div>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900">Adjust Background Erase &amp; Ink Darkness</h3>
+              <p class="text-xs text-slate-600 mt-0.5">
+                Use the <strong>Paper Erase Threshold</strong> slider to eliminate any phone camera shadows. Boost <strong>Ink Darkness</strong> to ensure smooth, solid strokes without paper grain.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-800 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">3</div>
+            <div>
+              <h3 class="text-sm font-semibold text-slate-900">Download or Copy Transparent PNG</h3>
+              <p class="text-xs text-slate-600 mt-0.5">
+                Click <strong>Download Transparent PNG</strong> to save your signature with full alpha transparency. You can also click <strong>Copy Image</strong> to paste directly into PDF editors, Preview, or Google Docs.
+              </p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- Privacy Guarantee -->
+      <section id="privacy" class="mt-14 pt-10 border-t border-slate-200 max-w-3xl mx-auto">
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+          Privacy &amp; Security Guarantee
+        </h2>
+        <div class="mt-4 p-4 rounded-xl bg-slate-100/70 border border-slate-200 text-xs text-slate-600 leading-relaxed">
+          Your legal signature is the most sensitive asset you possess. We guarantee that 100% of the pixel analysis and background transparency processing occurs in your local browser memory using HTML5 Canvas. No signature image is ever sent over the network.
+        </div>
+      </section>
+
+      <!-- FAQ Section -->
+      <section id="faq" class="mt-14 pt-10 border-t border-slate-200 max-w-3xl mx-auto">
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 mb-6">
+          Frequently Asked Questions
+        </h2>
+
+        <div class="space-y-4">
+          <div class="p-4 bg-white border border-slate-200 rounded-xl">
+            <h3 class="text-sm font-semibold text-slate-900">Why should I avoid AI diffusion tools for my signature?</h3>
+            <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+              AI generators hallucinate pen loops, alter cursive flow, and store uploaded signatures on training databases. This client-side tool uses deterministic pixel thresholding to preserve 100% of your real pen strokes.
+            </p>
+          </div>
+
+          <div class="p-4 bg-white border border-slate-200 rounded-xl">
+            <h3 class="text-sm font-semibold text-slate-900">What if my photo has uneven lighting or shadows?</h3>
+            <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+              Simply increase the <strong>Paper Erase Threshold</strong> slider. It detects the luminance difference between dark pen ink and paper shadows, cleanly isolating the signature.
+            </p>
+          </div>
+
+          <div class="p-4 bg-white border border-slate-200 rounded-xl">
+            <h3 class="text-sm font-semibold text-slate-900">Can I convert a blue ballpoint signature to clean black?</h3>
+            <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+              Yes. Click the <strong>Deep Black</strong> or <strong>Executive Navy</strong> tint button to normalize all ink strokes to an executive color profile.
+            </p>
+          </div>
+
+          <div class="p-4 bg-white border border-slate-200 rounded-xl">
+            <h3 class="text-sm font-semibold text-slate-900">Does this tool work completely offline?</h3>
+            <p class="text-xs text-slate-600 mt-1.5 leading-relaxed">
+              Yes. All logic is self-contained in this HTML file and functions without an internet connection.
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200/80 bg-white py-6 text-xs text-slate-500">
+      <div class="max-w-[1280px] mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <p>GreenTools · 100% Client-Side Signature Transparentizer</p>
+        <div class="flex items-center gap-5">
+          <a href="#app" class="hover:text-slate-900 transition-colors">Back to top</a>
+          <a href="#how-to-use" class="hover:text-slate-900 transition-colors">How It Works</a>
+          <a href="#privacy" class="hover:text-slate-900 transition-colors">Privacy</a>
+          <a href="#faq" class="hover:text-slate-900 transition-colors">FAQ</a>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Client-Side Canvas Engine Script -->
+    <script>
+      (function () {
+        'use strict';
+
+        var dropzone = document.getElementById('dropzone');
+        var fileInput = document.getElementById('file-input');
+        var dropView = document.getElementById('drop-view');
+        var workspaceView = document.getElementById('workspace-view');
+
+        var labelFilename = document.getElementById('label-filename');
+        var labelDimensions = document.getElementById('label-dimensions');
+        var labelThreshold = document.getElementById('label-threshold');
+        var labelDarkness = document.getElementById('label-darkness');
+
+        var sliderThreshold = document.getElementById('slider-threshold');
+        var sliderDarkness = document.getElementById('slider-darkness');
+        var toggleAutoCrop = document.getElementById('toggle-autocrop');
+        var colorButtons = document.querySelectorAll('.color-btn');
+
+        var signatureCanvas = document.getElementById('signature-canvas');
+        var btnCopyPng = document.getElementById('btn-copy-png');
+        var copyBtnText = document.getElementById('copy-btn-text');
+        var btnDownloadPng = document.getElementById('btn-download-png');
+        var btnOpenAnother = document.getElementById('btn-open-another');
+        var btnSampleTop = document.getElementById('btn-sample-top');
+        var btnSampleDrop = document.getElementById('btn-sample-drop');
+
+        var rawImg = null;
+        var appState = {
+          fileName: 'signature.png',
+          threshold: 195,
+          darkness: 1.5,
+          colorMode: 'natural', // 'natural' | 'black' | 'navy'
+          autoCrop: true
+        };
+
+        function processSignature() {
+          if (!rawImg) return;
+
+          var origW = rawImg.naturalWidth || rawImg.width;
+          var origH = rawImg.naturalHeight || rawImg.height;
+
+          // Temporary canvas for pixel extraction
+          var tempCanvas = document.createElement('canvas');
+          tempCanvas.width = origW;
+          tempCanvas.height = origH;
+          var tCtx = tempCanvas.getContext('2d');
+          tCtx.drawImage(rawImg, 0, 0);
+
+          var imgData = tCtx.getImageData(0, 0, origW, origH);
+          var data = imgData.data;
+
+          var minX = origW, minY = origH, maxX = 0, maxY = 0;
+          var hasInk = false;
+
+          var th = appState.threshold;
+          var darkMult = appState.darkness;
+          var mode = appState.colorMode;
+
+          for (var i = 0; i < data.length; i += 4) {
+            var r = data[i];
+            var g = data[i + 1];
+            var b = data[i + 2];
+
+            // Standard ITU-R BT.601 luminance
+            var lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+            if (lum >= th) {
+              // Paper background -> transparent
+              data[i + 3] = 0;
+            } else {
+              // Smooth transition alpha calculation
+              var alphaFactor = Math.pow((th - lum) / th, 0.7);
+              var alpha = Math.min(255, Math.round(alphaFactor * 255 * darkMult));
+              data[i + 3] = alpha;
+
+              if (alpha > 30) {
+                var pxIdx = i / 4;
+                var x = pxIdx % origW;
+                var y = Math.floor(pxIdx / origW);
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+                hasInk = true;
+              }
+
+              // Apply color tinting
+              if (mode === 'black') {
+                data[i] = 15;
+                data[i + 1] = 23;
+                data[i + 2] = 42;
+              } else if (mode === 'navy') {
+                data[i] = 11;
+                data[i + 1] = 37;
+                data[i + 2] = 69;
+              } else {
+                // Natural Ink: enhance contrast
+                data[i] = Math.max(0, Math.round(r * 0.85));
+                data[i + 1] = Math.max(0, Math.round(g * 0.85));
+                data[i + 2] = Math.max(0, Math.round(b * 0.85));
+              }
+            }
+          }
+
+          tCtx.putImageData(imgData, 0, 0);
+
+          // Auto-Crop
+          if (appState.autoCrop && hasInk && maxX > minX && maxY > minY) {
+            var pad = 20;
+            var cropX = Math.max(0, minX - pad);
+            var cropY = Math.max(0, minY - pad);
+            var cropW = Math.min(origW - cropX, (maxX - minX) + pad * 2);
+            var cropH = Math.min(origH - cropY, (maxY - minY) + pad * 2);
+
+            signatureCanvas.width = cropW;
+            signatureCanvas.height = cropH;
+            var ctx = signatureCanvas.getContext('2d');
+            ctx.clearRect(0, 0, cropW, cropH);
+            ctx.drawImage(tempCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+            labelDimensions.textContent = cropW + ' x ' + cropH + ' px (Cropped)';
+          } else {
+            signatureCanvas.width = origW;
+            signatureCanvas.height = origH;
+            var ctx = signatureCanvas.getContext('2d');
+            ctx.clearRect(0, 0, origW, origH);
+            ctx.drawImage(tempCanvas, 0, 0);
+            labelDimensions.textContent = origW + ' x ' + origH + ' px';
+          }
+
+          labelFilename.textContent = appState.fileName;
+          dropView.classList.add('hidden');
+          workspaceView.classList.remove('hidden');
+
+          if (window.lucide && window.lucide.createIcons) {
+            window.lucide.createIcons();
+          }
+        }
+
+        function loadImageSource(src, filename) {
+          appState.fileName = filename || 'signature.png';
+          var img = new Image();
+          img.onload = function () {
+            rawImg = img;
+            processSignature();
+          };
+          img.src = src;
+        }
+
+        function handleFile(file) {
+          if (!file || !file.type.match(/^image\//)) return;
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            loadImageSource(e.target.result, file.name);
+          };
+          reader.readAsDataURL(file);
+        }
+
+        // Sliders & Checkbox Events
+        sliderThreshold.addEventListener('input', function () {
+          appState.threshold = parseInt(sliderThreshold.value, 10);
+          labelThreshold.textContent = appState.threshold;
+          processSignature();
+        });
+
+        sliderDarkness.addEventListener('input', function () {
+          appState.darkness = parseFloat(sliderDarkness.value);
+          labelDarkness.textContent = appState.darkness.toFixed(1) + 'x';
+          processSignature();
+        });
+
+        toggleAutoCrop.addEventListener('change', function (e) {
+          appState.autoCrop = e.target.checked;
+          processSignature();
+        });
+
+        // Color Mode Buttons
+        colorButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            appState.colorMode = btn.getAttribute('data-color');
+            colorButtons.forEach(function (b) {
+              b.className = 'color-btn px-2.5 py-1.5 rounded-lg border font-medium transition-colors bg-slate-100 text-slate-700 border-slate-200';
+            });
+            btn.className = 'color-btn px-2.5 py-1.5 rounded-lg border font-medium transition-colors bg-slate-900 text-white border-slate-900';
+            processSignature();
+          });
+        });
+
+        // Download PNG
+        btnDownloadPng.addEventListener('click', function () {
+          signatureCanvas.toBlob(function (blob) {
+            if (!blob) return;
+            var outName = appState.fileName.replace(/\.[^/.]+$/, '') + '-transparent.png';
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = outName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 'image/png');
+        });
+
+        // Copy Image to Clipboard
+        btnCopyPng.addEventListener('click', function () {
+          signatureCanvas.toBlob(function (blob) {
+            if (!blob) return;
+            if (navigator.clipboard && window.ClipboardItem) {
+              navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function () {
+                copyBtnText.textContent = 'Copied!';
+                setTimeout(function () {
+                  copyBtnText.textContent = 'Copy Image';
+                }, 2000);
+              });
+            } else {
+              copyBtnText.textContent = 'Clipboard unsupported';
+            }
+          }, 'image/png');
+        });
+
+        // Dropzone & File Input
+        fileInput.addEventListener('change', function (e) {
+          if (e.target.files && e.target.files[0]) {
+            handleFile(e.target.files[0]);
+          }
+        });
+
+        dropzone.addEventListener('dragover', function (e) {
+          e.preventDefault();
+          dropzone.classList.add('border-indigo-600', 'bg-indigo-50/20');
+        });
+
+        dropzone.addEventListener('dragleave', function (e) {
+          e.preventDefault();
+          dropzone.classList.remove('border-indigo-600', 'bg-indigo-50/20');
+        });
+
+        dropzone.addEventListener('drop', function (e) {
+          e.preventDefault();
+          dropzone.classList.remove('border-indigo-600', 'bg-indigo-50/20');
+          if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleFile(e.dataTransfer.files[0]);
+          }
+        });
+
+        window.addEventListener('paste', function (e) {
+          var items = (e.clipboardData || e.originalEvent.clipboardData).items;
+          for (var i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+              var blob = items[i].getAsFile();
+              handleFile(blob);
+              break;
+            }
+          }
+        });
+
+        // Sample Signature Generator
+        function loadSampleSignature() {
+          var canvas = document.createElement('canvas');
+          canvas.width = 640;
+          canvas.height = 280;
+          var ctx = canvas.getContext('2d');
+
+          // Simulate off-white paper texture with slight gradient
+          var grad = ctx.createLinearGradient(0, 0, 640, 280);
+          grad.addColorStop(0, '#f8f6f0');
+          grad.addColorStop(1, '#eee9dc');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, 640, 280);
+
+          // Draw cursive pen stroke
+          ctx.strokeStyle = '#1e3a8a'; // Dark blue pen ink
+          ctx.lineWidth = 3.5;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+
+          ctx.beginPath();
+          ctx.moveTo(90, 160);
+          ctx.bezierCurveTo(120, 80, 160, 90, 170, 170);
+          ctx.bezierCurveTo(180, 210, 210, 110, 240, 150);
+          ctx.bezierCurveTo(260, 180, 290, 120, 320, 140);
+          ctx.bezierCurveTo(360, 170, 390, 110, 440, 130);
+          ctx.bezierCurveTo(480, 150, 520, 100, 550, 180);
+          ctx.stroke();
+
+          // Add elegant flourish loop
+          ctx.beginPath();
+          ctx.moveTo(110, 200);
+          ctx.bezierCurveTo(220, 220, 420, 240, 570, 190);
+          ctx.stroke();
+
+          loadImageSource(canvas.toDataURL('image/png'), 'sample-pen-signature.png');
+        }
+
+        btnSampleTop.addEventListener('click', loadSampleSignature);
+        btnSampleDrop.addEventListener('click', function (e) {
+          e.stopPropagation();
+          loadSampleSignature();
+        });
+
+        btnOpenAnother.addEventListener('click', function () {
+          workspaceView.classList.add('hidden');
+          dropView.classList.remove('hidden');
+          fileInput.value = '';
+        });
+
+        // Initialize icons
+        if (window.lucide && window.lucide.createIcons) {
+          window.lucide.createIcons();
+        }
+      })();
+    </script>
+  </body>
+</html>
